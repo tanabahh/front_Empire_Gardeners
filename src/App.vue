@@ -1,28 +1,45 @@
 <template>
   <div id="app">
-    <img alt="Vue logo" src="./assets/logo.png">
-    <HelloWorld msg="Welcome to Your Vue.js App"/>
+    <Header v-bind="headerParams"/>
+    <div id = "logregApp">
+      <router-view/>
+    </div>
+    <!--    <Footer v-bind="footerParams"/>-->
   </div>
 </template>
 
 <script>
-import HelloWorld from './components/HelloWorld.vue'
 
-export default {
-  name: 'App',
-  components: {
-    HelloWorld
+  import Header from "./components/Header.vue";
+
+  export default {
+    name: 'app',
+    components: {
+      Header//, Footer
+    },
+    data: function () {
+      return {
+        headerParams: {
+          title: "Лабораторная работа №4, Вариант 131611",
+          authorName: "Можанова Таисия Евгеньевна P3212",
+        },
+        footerParams: {
+          devYear: new Date()
+        }
+      }
+    },
   }
-}
 </script>
 
 <style>
-#app {
-  font-family: Avenir, Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-align: center;
-  color: #2c3e50;
-  margin-top: 60px;
-}
+  #app {
+    top: 0;
+    left: 0;
+    width: 100%;
+    position: fixed;
+    text-align: center;
+    background: #87CEEB;
+    margin-top: 100px;
+  }
+
 </style>
