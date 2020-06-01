@@ -4,7 +4,7 @@
             <table>
                 <tr>
                     <td>Имя: </td>
-                    <td><input class="textarea" id="login" name="login" placeholder=" username" type="text" v-model="login"  @click="clearMessage"></td>
+                    <td><input class="textarea" id="username" name="username" placeholder=" username" type="text" v-model="username" @click="clearMessage"></td>
                 </tr>
                 <tr>
                     <td>Пароль: </td>
@@ -25,6 +25,7 @@
             <button id="RegButton" type="submit" v-on:click="validateForm('reg')">Зарегистрироваться</button>
             <p style="color: #000080" v-if="isR" id="r" >{{this.rError}}</p>
         </div>
+        <img width="500" height="300" float="right" src="./login.png">
         <p :hidden="isErrorMessageHidden" style="color: red" id="erMes" >{{this.errorMessage}}</p>
 
     </div>
@@ -42,7 +43,7 @@
         data: function () {
             return {
                 password: "",
-                login: "",
+                username: "",
                 confirmPassword: "",
                 isErrorMessageHidden: true,
                 lError: "доступ запрещен",
@@ -56,22 +57,35 @@
         watch: {
             formName: function () {
                 this.password = "";
-                this.login = "";
+                this.username = "";
                 this.confirmPassword = "";
             }
         },
         methods: {
+            packParams: function(params) {
+                const p= [];
+
+                for (const [key, value] of Object.entries(params)) {
+                    p.push(encodeURIComponent(key) + '=' + encodeURIComponent(value));
+                }
+
+                return p.join('&');
+            },
             clearMessage: function(){
                 this.isErrorMessageHidden = true;
             },
             registF: function(){
-                this.$axios.post("/api/v1/user/register", {
-                    login: this.login,
-                    password: this.password
-                }).then(response => {
-                    if(response.status === 200) {
-                        sessionStorage.setItem("jwt", response.data);
-                        this.$router.push({path: "/home"});
+                const username = this.username;
+                const password = this.password;
+                this.$axios.post("/api/v1/user/register", this.packParams({username, password}),
+                    {
+                        headers:{'Content-Type': 'application/x-www-form-urlencoded'}
+                    }
+                ).then(response => {
+                    console.log(response.status);
+                    if(200 <= response.status < 300) {
+                        console.log("register, now do login");
+                        this.loginF();
                     }
                 }).catch( () => {
                     this.isL = false;
@@ -79,13 +93,19 @@
                 });
             },
             loginF: function(){
-                this.$axios.post("/api/v1/user/login", {
-                    login: this.login,
-                    password: this.password
+                const username = this.username;
+                const password = this.password;
+                let base64Credential = btoa(username+':'+password);
+                this.$axios.get("/api/v1/user/login", {
+                    headers:  {'Authorization': 'Basic ' + base64Credential}
                 }).then(response => {
-                    this.statusss= response.status;
+                    console.log('in response of login');
+                    console.log(response.status);
+                    this.status = response.status;
                     if (response.status === 200) {
-                        sessionStorage.setItem("jwt", response.data);
+                        console.log("response data");
+                        console.log(response.data);
+                        sessionStorage.setItem("jwt", base64Credential);
                         this.$router.push({path: "/home"});
                     }
                 }).catch( () => {
@@ -100,7 +120,7 @@
 
             },
             validateForm: function (type) {
-                if (!/^[a-z][a-z\d]*$/i.test(this.login)) {
+                if (!/^[a-z][a-z\d]*$/i.test(this.username)) {
                     this.isErrorMessageHidden = false;
                     this.errorMessage = "Логин может состоять из латинских букв и цифр, но не может начинаться с цифры";
 
@@ -126,6 +146,26 @@
 </script>
 
 <style  scoped>
+    @media (min-width: 1133px) {
+        .formma {
+           display: flex;
+            justify-content: center;
+    }
+    }
+    @media (max-width: 784px) {
+        .formma {
+            margin-right: auto;
+            margin-left: auto;
+            display: grid;
+        }
+    }
+    @media (max-width: 784px) {
+        .formma {
+            margin-right: auto;
+            margin-left: auto;
+            display: grid;
+        }
+    }
 table{
     margin: auto;
 }
@@ -146,18 +186,6 @@ form {
     top: 50%;
 }
 
-.formma {
-    background:oldlace;
-    width: 100%;
-    max-width: 1200px;
-    min-height: 100%;
-    padding: 10px;
-    margin: 0 auto;
-    color: #000080;
-    font: italic  12pt monospace;
-}
-
-
 button {
     background: #2e82c3;
     margin: 30px ;
@@ -168,7 +196,7 @@ button {
     font-size: 18px;
     height: 50px;
     text-decoration: none;
-    padding: 0.7em 1.5em; /* отступ от текста */
+    padding: 0.7em 1.5em;
 }
 
 button:hover {
@@ -176,7 +204,7 @@ button:hover {
 }
 
 .textarea {
-    resize: both;      /* изменение размера элемента по горизонтали и вертикали. */
+    resize: both;
     max-width: 16em;
     max-height: 6em;
     min-width: 8em;

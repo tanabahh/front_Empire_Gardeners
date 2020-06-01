@@ -26,7 +26,7 @@ export default new Router({
             beforeEnter: (to, from, next) => {
                 if (sessionStorage.getItem("jwt")) next();
                 else {
-                    // alert("Доступ неавторизованным пользователям запрещён");
+                    alert("Доступ неавторизованным пользователям запрещён");
                     next({path: "/logReg"});
                 }
             }

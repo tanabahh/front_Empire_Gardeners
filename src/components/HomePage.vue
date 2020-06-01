@@ -1,9 +1,9 @@
 <template>
     <div class="HomePage">
-        <div>
+        <div class="canvas-form">
             <div style="float: left; padding-left: 10%; padding-top: 5%">
                 <form name="form"   >
-                    <p class="line" span style="font-size:130%;font-style: italic;margin: 40px 0px 40px 120px;">Введите координаты цветочка</p>
+                    <p class="line" span style="font-size:130%;font-style: italic;margin: 40px 0px 40px 120px;">Введите координаты цветочка</p> <img visibility="hidden" width="1" height="1" src="./true.png"><img visibility="hidden" width="1" height="1" src="./false.png">
                     <p class="line"> <label for="valueY">X: </label>
                         <input class="textarea"  id="valueX" name="valueX" type="text" value="" placeholder="-5 ... 5"
                                v-model="point.x" @input="point.x = validate(point.x, -5, 5)" required>
@@ -19,19 +19,16 @@
                                v-model="point.r" @input="point.r = validate(point.r, 0, 5)" required @change="redrawGraph">
                     </p>
                 </form>
-
                 <p class="line">
                     <button class="send-button"  type="submit" id="submitButton1"  @click="exit" >&nbsp;&nbsp;Выйти&nbsp;&nbsp;</button>
                     <button class="send-button"  type="submit" id="submitButton"  @click="validateData" >Вырастить новый</button>
                 </p>
-                <h2 style="color: red">{{errorMessage}}</h2>
+                <p style="color: #000080">{{errorMessage}}</p>
             </div>
 
                 <canvas height="500" width="500" id="zoneCanvas" @click="validateFromGraph"></canvas>
-
         </div>
-
-        <div style="padding-top: 40%; width: 60%; margin: auto">
+        <div id="table">
             <Table v-bind:points="points"/>
         </div>
 
@@ -40,8 +37,6 @@
 </template>
 
 <script>
-    //нужно проверить что с отрисовкой канваса по радиусу
-    //и что с табличкой
     import Table from "./Table";
 
     export default {
@@ -50,11 +45,10 @@
         data() {
             return {
                 point: {
-                    requestDate: null,
-                    // isHit: false,
-                    result: null,
-                    x: "",
-                    y: "",
+                    created: null,
+                    hit: null,
+                    x: null,
+                    y: null,
                     r: null //Изначально задано макс. значение для отрисовки графика в макс. масштабе
                 },
                 points: [],
@@ -67,82 +61,131 @@
             this.drawPoints();
         },
         methods:{
+            packParams: function(params) {
+                const p= [];
+
+                for (const [key, value] of Object.entries(params)) {
+                    p.push(encodeURIComponent(key) + '=' + encodeURIComponent(value));
+                }
+
+                return p.join('&');
+            },
+            deleteAllCookies: function() {
+                let cookies = document.cookie.split(";");
+                for (let i = 0; i < cookies.length; i++) {
+                    let cookie = cookies[i];
+                    let eqPos = cookie.indexOf("=");
+                    let name = eqPos > -1 ? cookie.substr(0, eqPos) : cookie;
+                    document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT";
+                }
+            },
             exit: function(){
                 sessionStorage.removeItem("jwt");
+                sessionStorage.clear();
+                localStorage.clear();
+                this.deleteAllCookies();
+                //this.$axios.post('/logout', {});
+                //this.$axios.post("/logout", {});
+                //this.$axios.post("/api/users/logout", {});
                 this.$router.push("/logReg");
             },
             validateData: function(){
-                if(this.point.y===""){
-                    this.errorMessage = "поле y не заполнено";
-                }
-                else if(this.point.y==="-"){
-                    this.errorMessage = "не правильное заполнение поля y";
+                if(this.point.x === null || this.point.x === ""){
+                    this.errorMessage = "поле x не заполнено"
+                }else if(this.point.y === null || this.point.y === ""){
+                    this.errorMessage = "поле y не заполнено"
+                }else if(this.point.r === null || this.point.r === ""){
+                    this.errorMessage = "поле r не заполнено"
+                }else if(this.point.x === "-"){
+                    this.errorMessage = "не правильно заполнено поле x"
+                }else if(this.point.y === "-"){
+                    this.errorMessage = "не правильно заполнено поле y"
+                }else if(this.point.r === "-"){
+                    this.errorMessage = "не правильно заполнено поле r"
                 }
                 else {
-                    // this.loadPoints();
+                    console.log('im in validateData');
                     this.updatePoints();
                 }
             },
             updatePoints: function(){
-                this.$axios.post("/api/v1/points/add", {
-                    //login: sessionStorage.getItem("jwt"),
-                    x: this.point.x,
-                    y: this.point.y,
-                    r: this.point.r,
-                    //privet: 24312,
-                },{
-                    headers:{Authorization: "Basic" + localStorage.getItem('jwt')}
+                this.$axios.post("/api/v1/points/add",
+                    this.packParams({x: parseFloat(this.point.x), y: parseFloat(this.point.y), r: parseFloat(this.point.r)}), {
+                    headers:{
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'Authorization': 'Basic ' + sessionStorage.getItem('jwt')
+                    }
                 }).then(response => {
-                    // alert(response.data);
-                    this.points = response.data;
-                    this.redrawGraph();
+                    console.log("in response of update");
+                    this.hit = response.data;
+                    this.loadPoints();
                 });
             },
             loadPoints: function(){
-                //let login = sessionStorage.getItem("jwt");
                 this.$axios.get("/api/v1/points/get", {
-                    headers:{Authorization: "Basic" + localStorage.getItem("jwt")}
+                    headers:{
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'Authorization': 'Basic ' + sessionStorage.getItem("jwt")
+                    }
                 }).then(response => {
                     this.points = response.data;
                     this.redrawGraph();
                 });
             },
-            drawPoints: function(){
-                this.points.forEach( element => {
-                    this.drawPoint(element);
-                });
+            drawPoints: function(r) {
+                const correctImage = new Image();
+                correctImage.src = '/img/true.d8327e57.png';
+                const wrongImage = new Image();
+                wrongImage.src = '/img/false.89ccfa1e.png';
+                const centerX = 250;
+                const centerY = 250;
+                const points = this.points;
+                if (correctImage.complete && wrongImage.complete) {
+                    console.log('im complete');
+                    chooseRadius();
+                } else {
+                    console.log('wait im need some time');
+                    correctImage.onload = function () {
+                        wrongImage.onload = function(){
+                            chooseRadius();
+                            console.log('im download img');
+                        };
+                    };
+                }
+                function chooseRadius(){
+                    if (r != null) {
+                        console.log('r!=null');
+                        const zoomX = 230 / r;
+                        const zoomY = 230 / r;
+                        points.forEach((point) => {
+                            if (+point.r !== parseFloat(r)) {
+                                console.log('выбор точки радиус точки, радиус наш', point.r, parseFloat(r));
+                                return;
+                            }
+                            drawPoint(point, zoomX, zoomY);
+                        });
+                    } else {
+                        console.log('r = null');
+                        points.forEach((point) => {
+                            const zoomX = 230 / point.r;
+                            const zoomY = 230 / point.r;
+                            drawPoint(point, zoomX, zoomY);
+                        });
+                    }
+                }
+                function drawPoint(point, zoomX, zoomY) {
+                    let canvas = document.getElementById("zoneCanvas");
+                    let context = canvas.getContext("2d");
+                    console.log('draw point with hit ', point.hit);
+                    const visualX = centerX + point.x * zoomX;
+                    const visualY = centerY - point.y * zoomY;
+                    context.drawImage(point.hit ? correctImage : wrongImage, visualX - 15, visualY - 15, 30, 30);
+                }
             },
             redrawGraph: function(){
-                // eslint-disable-next-line no-console
-                console.log("redrawGraph");
+                console.log("redrawGraph. radius is a ", this.point.r);
                 this.drawZone('zoneCanvas', this.point.r);
-                this.drawPoints();
-            },
-            drawPoint: function (point) {
-                const correctImage = new Image();
-                correctImage.src = 'assets/true.png';
-                const wrongImage = new Image();
-                wrongImage.src = 'assets/false.png';
-                // eslint-disable-next-line no-console
-                console.log("GGGGGFDFDBDBFDBBD");
-
-                let canvas = document.getElementById("zoneCanvas");
-                let ctx = canvas.getContext("2d");
-
-                let relX = point.x;
-                let relY = point.y;
-
-                relX = relX*30 + 150;
-                relY = relY*(-30) + 150;
-
-                ctx.beginPath();
-
-                //ctx.fillStyle = point.result ? "green" : "red";
-                ctx.drawImage(point.result ? correctImage : wrongImage, relX, relY, 30, 30);
-                //ctx.arc(relX, relY,3, 0, 2*Math.PI);
-                ctx.fill();
-                ctx.stroke();
-                ctx.closePath();
+                this.drawPoints(this.point.r);
             },
             drawZone: function(canvasId, r) {
                 let canvas = document.getElementById(canvasId);
@@ -151,7 +194,7 @@
                 const height = canvas.height;
 
                 context.clearRect(0, 0, width, height);
-//прямоугольник
+
                 context.beginPath();
                 context.rect(0.5*width, 0.27*height, 0.46*width, 0.23*height);
                 context.closePath();
@@ -160,7 +203,6 @@
                 context.fill();
                 context.stroke();
 
-// сектор
                 context.beginPath();
                 context.moveTo(0.5*width, 0.5*height);
                 context.arc(0.5*width, 0.5*height, 0.23*height, 5*Math.PI/2 , 3*Math.PI);
@@ -170,7 +212,6 @@
                 context.fill();
                 context.stroke();
 
-//треугольник
                 context.beginPath();
                 context.moveTo(0.5*width, 0.5*height);
                 context.lineTo(0.04*width, 0.5*height);
@@ -182,7 +223,6 @@
                 context.fill();
                 context.stroke();
 
-//отрисовка осей
                 context.strokeStyle = "black";
                 context.fillStyle = "black";
                 context.beginPath();
@@ -202,7 +242,6 @@
                 context.lineTo(0.97*width, 0.51*height);
                 context.fillText("X", 0.98*width, 0.47*height);
 
-// деления
                 const R = r == null ? "R" : r;
                 const halfR = r == null ? "R/2" : r / 2;
 
@@ -235,25 +274,26 @@
                 context.strokeStyle = "black";
                 context.fillStyle = "black";
                 context.stroke();
-                context.stroke();
                 context.closePath();
             },
 
             validateFromGraph: function () {
-                let canvas = document.getElementById("zoneCanvas");
-                let rect = canvas.getBoundingClientRect();
-                this.point.x = event.clientX - rect.right + rect.width / 2;
-                this.point.y = rect.bottom - event.clientY - rect.height / 2;
+                if (this.point.r !== null){
+                    let canvas = document.getElementById("zoneCanvas");
+                    const rect = canvas.getBoundingClientRect();
+                    const width = canvas.width;
+                    const height = canvas.height;
+                    const visualX = Math.floor(event.clientX - rect.left);
+                    const visualY = Math.floor(event.clientY - rect.top);
 
-                this.point.x = (this.point.x)/30;
-                this.point.y = (this.point.y)/30;
-
-                this.updatePoints();
-
-                // eslint-disable-next-line no-console
-                console.log("X: "+this.point.x);
-                // eslint-disable-next-line no-console
-                console.log("Y: "+this.point.y);
+                    let centerX = width/2;
+                    let centerY = height/2;
+                    let zoomX = width*0.46 / this.point.r;
+                    let zoomY = height*0.46 / this.point.r;
+                    this.point.x = (visualX - centerX) / zoomX;
+                    this.point.y = (centerY - visualY) / zoomY;
+                    this.updatePoints();
+                }
             },
             validate : function (input, l, r) {
                 this.errorMessage="";
@@ -277,6 +317,7 @@
 <style scoped>
 
     .HomePage {
+        overflow: visible;
         background:oldlace;
         width: 100%;
         max-width: 1200px;
@@ -286,12 +327,29 @@
         color: #000080;
         font: italic  12pt monospace;
     }
-
+    @media (min-width: 1133px) {
+        .canvas-form {
+            display: flex;
+        }
+    }
+    @media (max-width: 784px) {
+        .canvas-form {
+            margin-right: auto;
+            margin-left: auto;
+            display: grid;
+        }
+    }
+    @media (max-width: 784px) {
+        .canvas-form {
+            margin-right: auto;
+            margin-left: auto;
+            display: grid;
+        }
+    }
     .send-button {
         background: #2e82c3;
         margin: 30px ;
     }
-
 
     button {
         border-radius: 7px;
@@ -301,7 +359,7 @@
         font-size: 18px;
         height: 50px;
         text-decoration: none;
-        padding: 0.7em 1.5em; /* отступ от текста */
+        padding: 0.7em 1.5em;
     }
 
     button:hover {
@@ -315,7 +373,7 @@
 
 
     .textarea {
-        resize: both;      /* изменение размера элемента по горизонтали и вертикали. */
+        resize: both;
         max-width: 16em;
         max-height: 6em;
         min-width: 8em;

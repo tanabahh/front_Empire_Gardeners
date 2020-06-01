@@ -23,9 +23,9 @@
         font:  italic 0.6em monospace;
         top: 0;
         left: 0;
-        z-index: 10; /*чтобы header всегда был сверху*/
+        z-index: 10;
         width: 100%;
-        position: fixed;
+        //position: fixed;
         color:  #000080;
         background-color: #87CEEB;
     }

@@ -33,13 +33,7 @@
 
 <style>
   #app {
-    top: 0;
-    left: 0;
-    width: 100%;
-    position: fixed;
     text-align: center;
     background: #87CEEB;
-    margin-top: 100px;
   }
-
 </style>

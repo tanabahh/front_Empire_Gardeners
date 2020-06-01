@@ -41,7 +41,8 @@ import LoginAndRegistrationForm from "./LoginAndRegistrationForm";
 </script>
 
 <style scoped>
-    #logRegField {
+   #logRegField {
+        //overflow: scroll;
         background:oldlace;
         width: 100%;
         max-width: 1200px;
